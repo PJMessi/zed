@@ -49,7 +49,7 @@ impl LspCommand for ExpandMacro2 {
     type ProtoRequest = proto::LspExtExpandMacro2;
 
     fn display_name(&self) -> &str {
-        "Expand macro"
+        "Expand macro 2"
     }
 
     fn to_lsp(

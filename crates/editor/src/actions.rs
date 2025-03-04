@@ -308,6 +308,7 @@ gpui::actions!(
         DuplicateLineUp,
         DuplicateSelection,
         ExpandMacroRecursively,
+        ExpandMacroRecursively2,
         FindAllReferences,
         Fold,
         FoldAll,
