@@ -332,7 +332,10 @@ message Envelope {
         ApplyCodeActionKind apply_code_action_kind = 309;
         ApplyCodeActionKindResponse apply_code_action_kind_response = 310;
 
-        RemoteMessageResponse remote_message_response = 311; // current max
+        RemoteMessageResponse remote_message_response = 311;
+
+        LspExtExpandMacro2 lsp_ext_expand_macro2 = 312;
+        LspExtExpandMacroResponse2 lsp_ext_expand_macro_response2 = 313;
     }
 
     reserved 87 to 88;
@@ -2158,6 +2161,27 @@ message Notification {
     string content = 5;
     bool is_read = 6;
     optional bool response = 7;
+}
+
+message LspExtAnalyzerStatus {
+    uint64 project_id = 1;
+    uint64 buffer_id = 2;
+    Anchor position = 3;
+}
+
+message LspExtAnalyzerStatusResponse {
+    string status = 1;
+}
+
+message LspExtExpandMacro2 {
+    uint64 project_id = 1;
+    uint64 buffer_id = 2;
+    Anchor position = 3;
+}
+
+message LspExtExpandMacroResponse2 {
+    string name = 1;
+    string expansion = 2;
 }
 
 message LspExtExpandMacro {

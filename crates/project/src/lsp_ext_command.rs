@@ -9,6 +9,135 @@ use serde::{Deserialize, Serialize};
 use std::{path::Path, sync::Arc};
 use text::{BufferId, PointUtf16, ToPointUtf16};
 
+
+pub enum LspExpandMacro2 {}
+
+impl lsp::request::Request for LspExpandMacro2 {
+    type Params = ExpandMacroParams2;
+    type Result = Option<ExpandedMacro2>;
+    const METHOD: &'static str = "rust-analyzer/expandMacro";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpandMacroParams2 {
+    pub text_document: lsp::TextDocumentIdentifier,
+    pub position: lsp::Position,
+}
+
+#[derive(Default, Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpandedMacro2 {
+    pub name: String,
+    pub expansion: String,
+}
+
+impl ExpandedMacro2 {
+    pub fn is_empty(&self) -> bool {
+        self.name.is_empty() && self.expansion.is_empty()
+    }
+}
+#[derive(Debug)]
+pub struct ExpandMacro2 {
+    pub position: PointUtf16,
+}
+
+#[async_trait(?Send)]
+impl LspCommand for ExpandMacro2 {
+    type Response = ExpandedMacro2;
+    type LspRequest = LspExpandMacro2;
+    type ProtoRequest = proto::LspExtExpandMacro2;
+
+    fn display_name(&self) -> &str {
+        "Expand macro"
+    }
+
+    fn to_lsp(
+        &self,
+        path: &Path,
+        _: &Buffer,
+        _: &Arc<LanguageServer>,
+        _: &App,
+    ) -> Result<ExpandMacroParams2> {
+        Ok(ExpandMacroParams2 {
+            text_document: make_text_document_identifier(path)?,
+            position: point_to_lsp(self.position),
+        })
+    }
+
+    async fn response_from_lsp(
+        self,
+        message: Option<ExpandedMacro2>,
+        _: Entity<LspStore>,
+        _: Entity<Buffer>,
+        _: LanguageServerId,
+        _: AsyncApp,
+    ) -> anyhow::Result<ExpandedMacro2> {
+        Ok(message
+            .map(|message| ExpandedMacro2 {
+                name: message.name,
+                expansion: message.expansion,
+            })
+            .unwrap_or_default())
+    }
+
+    fn to_proto(&self, project_id: u64, buffer: &Buffer) -> proto::LspExtExpandMacro2 {
+        proto::LspExtExpandMacro2 {
+            project_id,
+            buffer_id: buffer.remote_id().into(),
+            position: Some(language::proto::serialize_anchor(
+                &buffer.anchor_before(self.position),
+            )),
+        }
+    }
+
+    async fn from_proto(
+        message: Self::ProtoRequest,
+        _: Entity<LspStore>,
+        buffer: Entity<Buffer>,
+        mut cx: AsyncApp,
+    ) -> anyhow::Result<Self> {
+        let position = message
+            .position
+            .and_then(deserialize_anchor)
+            .context("invalid position")?;
+        Ok(Self {
+            position: buffer.update(&mut cx, |buffer, _| position.to_point_utf16(buffer))?,
+        })
+    }
+
+    fn response_to_proto(
+        response: ExpandedMacro2,
+        _: &mut LspStore,
+        _: PeerId,
+        _: &clock::Global,
+        _: &mut App,
+    ) -> proto::LspExtExpandMacroResponse2 {
+        proto::LspExtExpandMacroResponse2 {
+            name: response.name,
+            expansion: response.expansion,
+        }
+    }
+
+    async fn response_from_proto(
+        self,
+        message: proto::LspExtExpandMacroResponse2,
+        _: Entity<LspStore>,
+        _: Entity<Buffer>,
+        _: AsyncApp,
+    ) -> anyhow::Result<ExpandedMacro2> {
+        Ok(ExpandedMacro2 {
+            name: message.name,
+            expansion: message.expansion,
+        })
+    }
+
+    fn buffer_id_from_proto(message: &proto::LspExtExpandMacro2) -> Result<BufferId> {
+        BufferId::new(message.buffer_id)
+    }
+}
+///
+
 pub enum LspExpandMacro {}
 
 impl lsp::request::Request for LspExpandMacro {
